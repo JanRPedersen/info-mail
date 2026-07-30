@@ -8,4 +8,5 @@ public class ForwardingRule
     public List<string> ForwardAddresses { get; set; } = new();
     public bool ForwardWhenAnyKeywordMatches { get; set; } = true;
     public bool Enabled { get; set; } = true;
+    public string? TargetFolder { get; set; }
 }

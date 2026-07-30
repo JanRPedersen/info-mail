@@ -12,4 +12,5 @@ public class EmailDecision
     public string Reason { get; set; } = string.Empty;
     public double Confidence { get; set; }
     public string? Recipient { get; set; }
+    public string? TargetFolder { get; set; }
 }

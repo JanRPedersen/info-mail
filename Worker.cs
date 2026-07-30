@@ -54,7 +54,8 @@ public class Worker : BackgroundService
                         To = recipient,
                         RuleName = decision.Reason,
                         Reason = decision.Reason,
-                        ForwardedAt = DateTimeOffset.UtcNow
+                        ForwardedAt = DateTimeOffset.UtcNow,
+                        TargetFolder = decision.TargetFolder ?? _configuration["MailRobot:DefaultTargetFolder"]
                     }, stoppingToken);
                 }
 

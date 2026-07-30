@@ -18,7 +18,7 @@ public class RoutingDecisionService
         return _configuration.GetSection("MailRobot:ForwardingRules").Get<List<ForwardingRule>>() ?? new List<ForwardingRule>();
     }
 
-    public async Task<(bool ShouldForward, List<string> Addresses, string Reason)> EvaluateAsync(string subject, string body, CancellationToken cancellationToken)
+    public async Task<(bool ShouldForward, List<string> Addresses, string Reason, string? TargetFolder)> EvaluateAsync(string subject, string body, CancellationToken cancellationToken)
     {
         var combinedText = $"{subject} {body}".ToLowerInvariant();
         var rules = GetForwardingRules();
@@ -42,7 +42,7 @@ public class RoutingDecisionService
                 var shouldForward = rule.ForwardWhenAnyKeywordMatches ? matchedKeywords.Any() : matchedKeywords.Count == rule.Keywords.Count;
                 if (shouldForward)
                 {
-                    return (true, rule.ForwardAddresses, $"Matched rule '{rule.Name}' with keywords: {string.Join(", ", matchedKeywords)}");
+                    return (true, rule.ForwardAddresses, $"Matched rule '{rule.Name}' with keywords: {string.Join(", ", matchedKeywords)}", rule.TargetFolder);
                 }
             }
         }
@@ -50,9 +50,9 @@ public class RoutingDecisionService
         var noForwardKeywords = new[] { "ikke videresend", "holdes tilbage", "manuel", "afventer", "vurderes" };
         if (noForwardKeywords.Any(keyword => combinedText.Contains(keyword)))
         {
-            return (false, new List<string>(), "The message explicitly says it should not be forwarded");
+            return (false, new List<string>(), "The message explicitly says it should not be forwarded", null);
         }
 
-        return (false, new List<string>(), "No forwarding rule matched");
+        return (false, new List<string>(), "No forwarding rule matched", null);
     }
 }

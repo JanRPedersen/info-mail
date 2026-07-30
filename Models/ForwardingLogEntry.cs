@@ -10,4 +10,5 @@ public class ForwardingLogEntry
     public string RuleName { get; set; } = string.Empty;
     public string Reason { get; set; } = string.Empty;
     public DateTimeOffset ForwardedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string? TargetFolder { get; set; }
 }

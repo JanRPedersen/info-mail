@@ -32,7 +32,7 @@ public class RuleBasedMailClassifier : IMailClassifier
             }
         }
 
-        var (shouldForward, addresses, reason) = _routingDecisionService.EvaluateAsync(message.Subject, message.Body, cancellationToken).GetAwaiter().GetResult();
+        var (shouldForward, addresses, reason, targetFolder) = _routingDecisionService.EvaluateAsync(message.Subject, message.Body, cancellationToken).GetAwaiter().GetResult();
         if (shouldForward)
         {
             return Task.FromResult(new EmailDecision
@@ -40,7 +40,8 @@ public class RuleBasedMailClassifier : IMailClassifier
                 Route = MailRoute.Forward,
                 Reason = reason,
                 Confidence = 0.88,
-                Recipient = addresses.FirstOrDefault() ?? _configuration["MailRobot:ForwardRecipient"]
+                Recipient = addresses.FirstOrDefault() ?? _configuration["MailRobot:ForwardRecipient"],
+                TargetFolder = targetFolder
             });
         }
 
