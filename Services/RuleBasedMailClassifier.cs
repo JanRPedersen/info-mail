@@ -16,11 +16,21 @@ public class RuleBasedMailClassifier : IMailClassifier
     public Task<EmailDecision> ClassifyAsync(EmailMessage message, CancellationToken cancellationToken)
     {
         var text = $"{message.Subject} {message.Body}".ToLowerInvariant();
+        if (RoutingDecisionService.ContainsNoForwardInstruction(text))
+        {
+            return Task.FromResult(new EmailDecision
+            {
+                Route = MailRoute.ManualReview,
+                Reason = RoutingDecisionService.NoForwardReason,
+                Confidence = 0.92
+            });
+        }
+
         var rules = _configuration.GetSection("MailRobot:RoutingRules").Get<List<RoutingRule>>() ?? new List<RoutingRule>();
 
         foreach (var rule in rules)
         {
-            if (rule.Keywords.Any(keyword => text.Contains(keyword.ToLowerInvariant())))
+            if (rule.Keywords.Any(keyword => !string.IsNullOrWhiteSpace(keyword) && text.Contains(keyword.ToLowerInvariant())))
             {
                 return Task.FromResult(new EmailDecision
                 {

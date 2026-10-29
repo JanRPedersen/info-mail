@@ -4,6 +4,8 @@ namespace InfoMail.Services;
 
 public class RoutingDecisionService
 {
+    internal const string NoForwardReason = "The message explicitly says it should not be forwarded";
+    private static readonly string[] NoForwardKeywords = { "ikke videresend", "holdes tilbage", "manuel", "afventer", "vurderes" };
     private readonly IConfiguration _configuration;
     private readonly IDocumentReferenceService _documentReferenceService;
 
@@ -30,6 +32,11 @@ public class RoutingDecisionService
             combinedText += " " + referenceText;
         }
 
+        if (ContainsNoForwardInstruction(combinedText))
+        {
+            return (false, new List<string>(), NoForwardReason, null);
+        }
+
         foreach (var rule in rules.Where(r => r.Enabled))
         {
             var matchedKeywords = rule.Keywords
@@ -47,12 +54,9 @@ public class RoutingDecisionService
             }
         }
 
-        var noForwardKeywords = new[] { "ikke videresend", "holdes tilbage", "manuel", "afventer", "vurderes" };
-        if (noForwardKeywords.Any(keyword => combinedText.Contains(keyword)))
-        {
-            return (false, new List<string>(), "The message explicitly says it should not be forwarded", null);
-        }
-
         return (false, new List<string>(), "No forwarding rule matched", null);
     }
+
+    internal static bool ContainsNoForwardInstruction(string text) =>
+        NoForwardKeywords.Any(keyword => text.Contains(keyword, StringComparison.OrdinalIgnoreCase));
 }

@@ -1,0 +1,12 @@
+**
+!Dockerfile
+!InfoMail.csproj
+!Program.cs
+!Worker.cs
+!appsettings.json
+!Models/
+!Models/**
+!Services/
+!Services/**
+!Data/
+!Data/routing-catalog.json

@@ -23,4 +23,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\InfoMail.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\appsettings.json" Link="TestData\appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Data\inbox-samples.json" Link="TestData\inbox-samples.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Data\routing-catalog.json" Link="TestData\routing-catalog.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
