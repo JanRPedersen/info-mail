@@ -48,7 +48,7 @@ public sealed class AiShadowObserver
         {
             throw new InvalidOperationException("AI shadow requires its own explicitly approved StartTimeUtc.");
         }
-        if (string.IsNullOrWhiteSpace(_deployment) || _dailyLimit is < 1 or > 100 ||
+        if (string.IsNullOrWhiteSpace(_deployment) || _dailyLimit is < 1 or > 500 ||
             _maximumInput is < 1 or > 200_000)
         {
             throw new InvalidOperationException("AI shadow configuration exceeds its safety limits.");

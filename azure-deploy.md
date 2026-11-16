@@ -454,7 +454,7 @@ Activation prerequisites:
    claims and results; a role grant or successful build is not a live inference test.
 
 Default budget: 20 attempted requests per UTC day, shared across deployments
-and rule versions; configurable from 1 to 100 using
+and rule versions; configurable from 1 to 500 using
 `AiShadow__DailyRequestLimit`. Request slots and hashed message claims are
 atomic and persistent. Interrupted/failed requests consume budget and are not
 retried automatically. The same message/model/rule-version combination is not

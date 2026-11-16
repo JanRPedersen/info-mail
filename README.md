@@ -217,9 +217,10 @@ Text-only document guidance never becomes an invented address. Missing/invalid
 sources produce `SourcesUnavailableOrInvalid`, not partial-context success or
 silent stale-source fallback.
 
-Defaults: disabled; no data-processing approval; maximum 20 attempted model
-calls per UTC day, 100,000 input characters including the catalog, 1,024 maximum
-completion tokens per call, and a 25-second observation timeout. For oversized
+Defaults: disabled; no data-processing approval; default 20 attempted model
+calls per UTC day (configurable from 1 to 500), 100,000 input characters
+including the catalog, 1,024 maximum completion tokens per call, and a 25-second
+observation timeout. For oversized
 inputs, the observer retries with historical feedback examples relevant by
 subject or deterministic matched rule IDs. The full message and all routing
 rules are retained; if the reduced input is still too large, it is skipped

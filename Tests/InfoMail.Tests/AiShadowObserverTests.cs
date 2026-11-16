@@ -518,13 +518,25 @@ public class AiShadowObserverTests
     [InlineData("AiShadow:Deployment", "")]
     [InlineData("AiShadow:StartTimeUtc", "")]
     [InlineData("AiShadow:DailyRequestLimit", "0")]
-    [InlineData("AiShadow:DailyRequestLimit", "101")]
+    [InlineData("AiShadow:DailyRequestLimit", "501")]
     [InlineData("AiShadow:MaximumInputCharacters", "0")]
     [InlineData("AiShadow:MaximumInputCharacters", "200001")]
     public void UnsafeConfigurationFailsBeforeNetworkAccess(string key, string value)
     {
         using var http = new HttpClient(new Handler());
         Assert.Throws<InvalidOperationException>(() => Observer(http, new Store(), configuration: Config((key, value))));
+    }
+
+    [Fact]
+    public async Task DailyRequestLimitOf500IsUsedForClaims()
+    {
+        using var http = new HttpClient(new Handler());
+        var store = new Store();
+        var observer = Observer(http, store, configuration: Config(("AiShadow:DailyRequestLimit", "500")));
+
+        await observer.ObserveAsync(Message(), Baseline(), CancellationToken.None);
+
+        Assert.Equal(500, store.LastLimit);
     }
 
     private static AiShadowObserver Observer(HttpClient http, Store store, Credential? credential = null,
