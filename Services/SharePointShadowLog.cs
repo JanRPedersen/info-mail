@@ -14,7 +14,9 @@ public sealed record ShadowLogEntry(string Reference, DateTimeOffset ReceivedUtc
     string Status, string Deployment, string RuleVersion, string BaselineRoute, string[] BaselineRuleIds,
     string? AiRoute, string[] AiRuleIds, string[] CandidateTo, string[] CandidateCc, string? TargetFolder,
     bool? RouteAgrees, bool? RulesAgree, string[]? Sources = null, bool? SourceConflict = null,
-    string? Explanation = null, bool IsSynthetic = false);
+    string? Explanation = null, bool IsSynthetic = false, long MessageCharacters = 0,
+    long CatalogCharacters = 0, long InputCharacters = 0, int MaximumInputCharacters = 0,
+    long OriginalCatalogCharacters = 0, long OriginalInputCharacters = 0, bool FeedbackContextReduced = false);
 
 public interface IShadowLogQueue
 {
@@ -167,8 +169,12 @@ public sealed class SharePointShadowLog(
     }
 
     public static ShadowLogEntry Create(EmailMessage message, string reference, string status, string deployment,
-        ShadowRules rules, EmailDecision baseline, ShadowResult? result)
+        ShadowRules rules, EmailDecision baseline, ShadowResult? result, int maximumInputCharacters = 0,
+        long? originalCatalogCharacters = null, bool feedbackContextReduced = false)
     {
+        var messageCharacters = (long)message.Subject.Length + message.Body.Length;
+        var catalogCharacters = (long)rules.Catalog.Length;
+        var originalCatalogSize = originalCatalogCharacters ?? catalogCharacters;
         var to = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var cc = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using var sourceCatalog = JsonDocument.Parse(rules.Catalog);
@@ -208,6 +214,8 @@ public sealed class SharePointShadowLog(
             status, deployment, rules.Version, baseline.Route.ToString(), baseline.MatchedRules.ToArray(),
             result?.Route, result?.RuleIds ?? Array.Empty<string>(), to.Order().ToArray(),
             cc.Except(to).Order().ToArray(), folder, result?.RouteAgrees, result?.RulesAgree, sources, result?.SourceConflict,
-            result?.Explanation, message.Id.StartsWith("synthetic-shadow-", StringComparison.Ordinal));
+            result?.Explanation, message.Id.StartsWith("synthetic-shadow-", StringComparison.Ordinal),
+            messageCharacters, catalogCharacters, messageCharacters + catalogCharacters, maximumInputCharacters,
+            originalCatalogSize, messageCharacters + originalCatalogSize, feedbackContextReduced);
     }
 }

@@ -66,6 +66,26 @@ public class SharePointShadowLogTests
     }
 
     [Fact]
+    public void CreatePersistsInputSizeMetadata()
+    {
+        var rules = new ShadowRules("""{"Topics":[],"KeywordRules":[]}""", "version");
+        var message = new EmailMessage { Subject = "Donation", Body = "Body" };
+        var originalCatalogCharacters = rules.Catalog.Length + 100;
+
+        var entry = SharePointShadowLog.Create(message, new string('A', 64), "SkippedInputTooLarge",
+            "gpt-5.4-mini", rules, new EmailDecision(), null, maximumInputCharacters: 100_000,
+            originalCatalogCharacters: originalCatalogCharacters, feedbackContextReduced: true);
+
+        Assert.Equal(message.Subject.Length + message.Body.Length, entry.MessageCharacters);
+        Assert.Equal(rules.Catalog.Length, entry.CatalogCharacters);
+        Assert.Equal(entry.MessageCharacters + entry.CatalogCharacters, entry.InputCharacters);
+        Assert.Equal(100_000, entry.MaximumInputCharacters);
+        Assert.Equal(originalCatalogCharacters, entry.OriginalCatalogCharacters);
+        Assert.Equal(entry.MessageCharacters + originalCatalogCharacters, entry.OriginalInputCharacters);
+        Assert.True(entry.FeedbackContextReduced);
+    }
+
+    [Fact]
     public async Task MissingFolderIsCreatedOnlyAtApprovedSiteAndVerified()
     {
         var requests = new List<string>();

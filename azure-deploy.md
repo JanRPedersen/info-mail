@@ -454,7 +454,7 @@ Activation prerequisites:
    claims and results; a role grant or successful build is not a live inference test.
 
 Default budget: 20 attempted requests per UTC day, shared across deployments
-and rule versions; configurable from 1 to 100 using
+and rule versions; configurable from 1 to 500 using
 `AiShadow__DailyRequestLimit`. Request slots and hashed message claims are
 atomic and persistent. Interrupted/failed requests consume budget and are not
 retried automatically. The same message/model/rule-version combination is not
@@ -484,9 +484,13 @@ evaluation after a budget skip updates that same file. Flushes run after
 processing, are limited to 100 files and 90 seconds per scan, and preserve
 queued records after failures.
 
-Inputs exceeding `AiShadow__MaximumInputCharacters` (default 32,000, maximum
+Inputs exceeding `AiShadow__MaximumInputCharacters` (default 100,000, maximum
 200,000 including the catalog and supplementary sources; active Azure limit
-100,000) are skipped rather than truncated. Completion
+100,000) are retried with only historical feedback examples relevant by subject
+or deterministic matched rule IDs. The message, routing rules and source
+documents are not truncated; inputs still over the limit are skipped. Shadow
+log metadata records original and prompt character counts without recording the
+message body. Completion
 tokens are capped at 1,024, responses at 64 KiB, observations at 25 seconds
 (plus up to five seconds to persist a failure);
 redirects and automatic HTTP inference retries are disabled. These bounds are
