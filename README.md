@@ -218,10 +218,15 @@ sources produce `SourcesUnavailableOrInvalid`, not partial-context success or
 silent stale-source fallback.
 
 Defaults: disabled; no data-processing approval; maximum 20 attempted model
-calls per UTC day, 32,000 input characters including the catalog, 1,024 maximum
-completion tokens per call, and a 25-second observation timeout. Oversized inputs
-are skipped without truncation. The character limit is not an exact token/cost
-limit. Request attempts consume budget even if inference fails.
+calls per UTC day, 100,000 input characters including the catalog, 1,024 maximum
+completion tokens per call, and a 25-second observation timeout. For oversized
+inputs, the observer retries with historical feedback examples relevant by
+subject or deterministic matched rule IDs. The full message and all routing
+rules are retained; if the reduced input is still too large, it is skipped
+without truncation. Shadow logs record message, catalog and input sizes, the
+configured limit, and whether feedback context was reduced. The character limit
+is not an exact token/cost limit. Request attempts consume budget even if
+inference fails.
 Azure currently permits 100,000 input characters to accommodate the combined
 sources (the verified synthetic request used 54,002 characters). The code
 accepts limits up to 200,000; a complete source snapshot itself is bounded to

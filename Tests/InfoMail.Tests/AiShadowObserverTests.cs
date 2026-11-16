@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Azure.Core;
 using InfoMail.Models;
 using InfoMail.Services;
@@ -303,14 +304,117 @@ public class AiShadowObserverTests
         var handler = new Handler();
         using var http = new HttpClient(handler);
         var store = new Store();
-        var size = Catalog.Length + Message().Subject.Length + Message().Body.Length;
+        var message = Message();
+        var size = Catalog.Length + message.Subject.Length + message.Body.Length;
         await Observer(http, store, configuration: Config(("AiShadow:MaximumInputCharacters", size.ToString())))
-            .ObserveAsync(Message(), Baseline(), CancellationToken.None);
+            .ObserveAsync(message, Baseline(), CancellationToken.None);
         Assert.Equal(1, handler.Calls);
-        await Observer(http, store, configuration: Config(("AiShadow:MaximumInputCharacters", (size - 1).ToString())))
-            .ObserveAsync(Message(), Baseline(), CancellationToken.None);
+
+        var oversizedMessage = Message();
+        oversizedMessage.Id = "PRIVATE-OVERSIZED-ID";
+        var messageCharacters = oversizedMessage.Subject.Length + oversizedMessage.Body.Length;
+        await Observer(http, store, configuration: Config(("AiShadow:MaximumInputCharacters", (messageCharacters - 1).ToString())))
+            .ObserveAsync(oversizedMessage, Baseline(), CancellationToken.None);
         Assert.Equal(1, handler.Calls);
         Assert.Equal(1, store.ClaimCalls);
+    }
+
+    [Fact]
+    public async Task DefaultInputLimitMatchesVerifiedAzureLimit()
+    {
+        var handler = new Handler();
+        using var http = new HttpClient(handler);
+        var message = Message();
+        message.Body = new string('x', 100_000 - Catalog.Length - message.Subject.Length);
+
+        await Observer(http, new Store()).ObserveAsync(message, Baseline(), CancellationToken.None);
+
+        Assert.Equal(1, handler.Calls);
+    }
+
+    [Fact]
+    public async Task OversizedCatalogKeepsOnlySubjectOrRuleRelevantFeedback()
+    {
+        var catalog = JsonNode.Parse(Catalog)!.AsObject();
+        var examples = new JsonArray
+        {
+            new JsonObject
+            {
+                ["Subject"] = "Unrelated phrasing",
+                ["RuleIds"] = new JsonArray("donors"),
+                ["ActualRecipients"] = new JsonArray("team@blind.dk")
+            },
+            new JsonObject
+            {
+                ["Subject"] = "Donation follow-up",
+                ["RuleIds"] = new JsonArray("unrelated-subject-rule")
+            }
+        };
+        for (var index = 0; index < 24; index++)
+        {
+            examples.Add(new JsonObject
+            {
+                ["Subject"] = $"Unrelated topic {index}",
+                ["HumanComment"] = "irrelevant-comment-" + new string('x', 240),
+                ["RuleIds"] = new JsonArray($"unrelated-{index}")
+            });
+        }
+        catalog["EmployeeFeedbackExamples"] = examples;
+        catalog["CurrentMailEmployeeOutcome"] = new JsonObject
+        {
+            ["Status"] = "Matching",
+            ["Examples"] = new JsonArray(new JsonObject
+            {
+                ["ActualRecipients"] = new JsonArray("team@blind.dk")
+            })
+        };
+
+        var handler = new Handler();
+        using var http = new HttpClient(handler);
+        var store = new Store { CatalogOverride = catalog.ToJsonString() };
+        var queue = new LogQueue();
+        var observer = new AiShadowObserver(http, new Credential(), store,
+            Config(("AiShadow:MaximumInputCharacters", "1000")), new RecordingLogger(), queue);
+        var message = Message();
+        message.Subject = "Donation request";
+
+        var evaluation = await observer.EvaluateAsync(message, Baseline(), CancellationToken.None);
+
+        Assert.True(evaluation.Completed);
+        Assert.Equal(1, handler.Calls);
+        Assert.Contains("EmployeeFeedbackExamplesScope", handler.Body);
+        Assert.Contains("Unrelated phrasing", handler.Body);
+        Assert.Contains("Donation follow-up", handler.Body);
+        Assert.Contains("CurrentMailEmployeeOutcome", handler.Body);
+        Assert.DoesNotContain("irrelevant-comment-", handler.Body);
+        Assert.Contains("PRIVATE-BODY", handler.Body);
+        var entry = queue.Entries.Last();
+        Assert.True(entry.FeedbackContextReduced);
+        Assert.True(entry.CatalogCharacters < entry.OriginalCatalogCharacters);
+        Assert.True(entry.InputCharacters <= entry.MaximumInputCharacters);
+        Assert.Equal(1000, entry.MaximumInputCharacters);
+    }
+
+    [Fact]
+    public async Task OversizedInputLogIncludesOnlySizeMetadata()
+    {
+        var handler = new Handler();
+        using var http = new HttpClient(handler);
+        var logger = new RecordingLogger();
+        var message = Message();
+        var messageCharacters = message.Subject.Length + message.Body.Length;
+        var maximum = messageCharacters - 1;
+
+        await Observer(http, new Store(), logger: logger,
+            configuration: Config(("AiShadow:MaximumInputCharacters", maximum.ToString())))
+            .ObserveAsync(message, Baseline(), CancellationToken.None);
+
+        var warning = Assert.Single(logger.Messages.Where(text => text.Contains("skipped oversized input")));
+        Assert.Contains($"MessageCharacters={messageCharacters}", warning);
+        Assert.Contains($"OriginalCatalogCharacters={Catalog.Length}", warning);
+        Assert.Contains($"MaximumInputCharacters={maximum}", warning);
+        Assert.DoesNotContain(message.Body, warning);
+        Assert.Equal(0, handler.Calls);
     }
 
     [Theory]
